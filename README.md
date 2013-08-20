@@ -48,6 +48,15 @@ A region of interest (ROI) can be designated so that movements in the ROI can be
 2. Install OpenCV library by typing `sudo apt-get install libopencv-dev` Test the installation by typing `pkg-config opencv --modversion`
 3. Type `sudo apt-get install lighttpd`
 
+## In this project
+
+* Camera_version contains files that uses the buffer from the camera video port to feed to opencv
+* daemon_version contains files that show how to use signals to communicate with the program so that it can run in daemon mode
+* data_visualisation contains the files that ideally visualises the output we have
+* doc contains general documentations and tutorials
+* streaming contains instructions on how to get the pi to stream video over a network
+* tutorial code contains code to guide users through some simple image processing basics
+* webcam_version contains c++ code for generic use with a webcam, but works on the pi as well
 
 # Other Documentations
 

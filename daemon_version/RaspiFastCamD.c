@@ -1,38 +1,10 @@
-/*
-Copyright (c) 2013, Broadcom Europe Ltd
-Copyright (c) 2013, James Hughes
-Copyright (c) 2013, Niklas Rother
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of the copyright holder nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 /**
  * \file RaspiFastCamD.c
  * Deamon to capture pictures from the camera on demand.
  * Send a USR1 Signal to take a picture.
  *
- * \date 26 May 2013
+ * \date 20/08/2013
+ * \Modified by: Daniel L
  * \Author: James Hughes, Niklas Rother
  *
  * Description
@@ -65,11 +37,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "interface/mmal/util/mmal_default_components.h"
 #include "interface/mmal/util/mmal_connection.h"
 
-
-#include "RaspiCamControl.h"
-#include "RaspiPreview.h"
-#include "RaspiCLI.h"
-
 #include <semaphore.h>
 
 /// Camera number to use - we only have one camera, indexed from 0.
@@ -84,6 +51,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Stills format information
 #define STILLS_FRAME_RATE_NUM 3
 #define STILLS_FRAME_RATE_DEN 1
+
+#define PREVIEW_FRAME_RATE_NUM 30
+#define PREVIEW_FRAME_RATE_DEN 1
 
 /// Video render needs at least 2 buffers.
 #define VIDEO_OUTPUT_BUFFERS_NUM 3
@@ -101,9 +71,6 @@ typedef struct
    int verbose;                        /// !0 if want detailed run information
    MMAL_FOURCC_T encoding;             /// Encoding to use for the output file.
    
-   RASPIPREVIEW_PARAMETERS preview_parameters;    /// Preview setup parameters
-   RASPICAM_CAMERA_PARAMETERS camera_parameters; /// Camera setup parameters
-
    MMAL_COMPONENT_T *camera_component;    /// Pointer to the camera component
    MMAL_COMPONENT_T *encoder_component;   /// Pointer to the encoder component
    MMAL_CONNECTION_T *preview_connection; /// Pointer to the connection from camera to preview
@@ -122,29 +89,6 @@ typedef struct
    RASPISTILL_STATE *pstate;            /// pointer to our state in case required in callback
 } PORT_USERDATA;
 
-static void display_valid_parameters(char *app_name);
-
-/// Comamnd ID's and Structure defining our command line options
-#define CommandHelp         0
-#define CommandWidth        1
-#define CommandHeight       2
-#define CommandQuality      3
-#define CommandOutput       5
-#define CommandVerbose      6
-#define CommandEncoding     10
-
-static COMMAND_LIST cmdline_commands[] =
-{
-   { CommandHelp,    "-help",       "?",  "This help information", 0 },
-   { CommandWidth,   "-width",      "w",  "Set image width <size>", 1 },
-   { CommandHeight,  "-height",     "h",  "Set image height <size>", 1 },
-   { CommandQuality, "-quality",    "q",  "Set jpeg quality <0 to 100>", 1 },
-   { CommandOutput,  "-output",     "o",  "Output filename <filename> (to write to stdout, use '-o -'). If not specified, no file is saved", 1 },
-   { CommandVerbose, "-verbose",    "v",  "Output verbose information during run", 0 },
-   { CommandEncoding,"-encoding",   "e",  "Encoding to use for output file (jpg, bmp, gif, png)", 1},
-};
-
-static int cmdline_commands_size = sizeof(cmdline_commands) / sizeof(cmdline_commands[0]);
 
 static struct
 {
@@ -181,7 +125,7 @@ static void default_status(RASPISTILL_STATE *state)
    state->width = 2592;
    state->height = 1944;
    state->quality = 85;
-   state->filename = NULL;
+   state->filename = "test.jpg";
    state->verbose = 0;
    state->camera_component = NULL;
    state->encoder_component = NULL;
@@ -190,197 +134,6 @@ static void default_status(RASPISTILL_STATE *state)
    state->encoder_pool = NULL;
    state->encoding = MMAL_ENCODING_JPEG;
 
-   // Setup preview window defaults
-   raspipreview_set_defaults(&state->preview_parameters);
-
-   // Set up the camera_parameters to default
-   raspicamcontrol_set_defaults(&state->camera_parameters);
-}
-
-/**
- * Dump image state parameters to stderr. Used for debugging
- *
- * @param state Pointer to state structure to assign defaults to
- */
-static void dump_status(RASPISTILL_STATE *state)
-{
-   if (!state)
-   {
-      vcos_assert(0);
-      return;
-   }
-
-   fprintf(stderr, "Width %d, Height %d, quality %d, filename %s\n", state->width,
-         state->height, state->quality, state->filename);
-   
-   raspicamcontrol_dump_parameters(&state->camera_parameters);
-}
-
-/**
- * Parse the incoming command line and put resulting parameters in to the state
- *
- * @param argc Number of arguments in command line
- * @param argv Array of pointers to strings from command line
- * @param state Pointer to state structure to assign any discovered parameters to
- * @return non-0 if failed for some reason, 0 otherwise
- */
-static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
-{
-   // Parse the command line arguments.
-   // We are looking for --<something> or -<abreviation of something>
-
-   int valid = 1;
-   int i;
-
-   for (i = 1; i < argc && valid; i++)
-   {
-      int command_id, num_parameters;
-
-      if (!argv[i])
-         continue;
-
-      if (argv[i][0] != '-')
-      {
-         valid = 0;
-         continue;
-      }
-
-      // Assume parameter is valid until proven otherwise
-      valid = 1;
-
-      command_id = raspicli_get_command_id(cmdline_commands, cmdline_commands_size, &argv[i][1], &num_parameters);
-
-      // If we found a command but are missing a parameter, continue (and we will drop out of the loop)
-      if (command_id != -1 && num_parameters > 0 && (i + 1 >= argc) )
-         continue;
-
-      //  We are now dealing with a command line option
-      switch (command_id)
-      {
-      case CommandHelp:
-         display_valid_parameters(basename(argv[0]));
-         // exit straight away if help requested
-         return -1;
-
-      case CommandWidth: // Width > 0
-         if (sscanf(argv[i + 1], "%u", &state->width) != 1)
-            valid = 0;
-         else
-            i++;
-         break;
-
-      case CommandHeight: // Height > 0
-         if (sscanf(argv[i + 1], "%u", &state->height) != 1)
-            valid = 0;
-         else
-            i++;
-         break;
-
-      case CommandQuality: // Quality = 1-100
-         if (sscanf(argv[i + 1], "%u", &state->quality) == 1)
-         {
-            if (state->quality > 100)
-            {
-               fprintf(stderr, "Setting max quality = 100\n");
-               state->quality = 100;
-            }
-            i++;
-         }
-         else
-            valid = 0;
-
-         break;
-
-      case CommandOutput:  // output filename
-      {
-         int len = strlen(argv[i + 1]);
-         if (len)
-         {
-            state->filename = malloc(len + 10); // leave enough space for any generated changes to filename
-            vcos_assert(state->filename);
-            if (state->filename)
-               strncpy(state->filename, argv[i + 1], len);
-            i++;
-         }
-         else
-            valid = 0;
-         break;
-      }
-
-      case CommandVerbose: // display lots of data during run
-         state->verbose = 1;
-         break;
-      
-      case CommandEncoding :
-      {
-         int len = strlen(argv[i + 1]);
-         valid = 0;
-
-         if (len)
-         {
-            int j;
-            for (j=0;j<encoding_xref_size;j++)
-            {
-               if (strcmp(encoding_xref[j].format, argv[i+1]) == 0)
-               {
-                  state->encoding = encoding_xref[j].encoding;
-                  valid = 1;
-                  i++;
-                  break;
-               }
-            }
-         }
-         break;
-      }
-
-      default:
-      {
-         // Try parsing for any image specific parameters
-         // result indicates how many parameters were used up, 0,1,2
-         // but we adjust by -1 as we have used one already
-         const char *second_arg = (i + 1 < argc) ? argv[i + 1] : NULL;
-         int parms_used = raspicamcontrol_parse_cmdline(&state->camera_parameters, &argv[i][1], second_arg);
-
-         // If no parms were used, this must be a bad parameters
-         if (!parms_used)
-            valid = 0;
-         else
-            i += parms_used - 1;
-
-         break;
-      }
-      }
-   }
-
-   if (!valid)
-   {
-      fprintf(stderr, "Invalid command line option (%s)\n", argv[i]);
-      return 1;
-   }
-
-   return 0;
-}
-
-/**
- * Display usage information for the application to stdout
- *
- * @param app_name String to display as the application name
- */
-static void display_valid_parameters(char *app_name)
-{
-   fprintf(stderr, "Runs camera idefintily, and take capture if requested by USR1 signal.\n\n");
-   fprintf(stderr, "usage: %s [options]\n\n", app_name);
-
-   fprintf(stderr, "Image parameter commands\n\n");
-
-   raspicli_display_help(cmdline_commands, cmdline_commands_size);
-
-   // Now display any help information from the camcontrol code
-   raspicamcontrol_display_help();
-
-   fprintf(stderr, "\n");
-
-   return;
 }
 
 /**
@@ -527,8 +280,8 @@ static MMAL_STATUS_T create_camera_component(RASPISTILL_STATE *state)
          .max_stills_h = state->height,
          .stills_yuv422 = 0,
          .one_shot_stills = 1,
-         .max_preview_video_w = state->preview_parameters.previewWindow.width,
-         .max_preview_video_h = state->preview_parameters.previewWindow.height,
+         .max_preview_video_w = state->width,
+         .max_preview_video_h = state->height,
          .num_preview_video_frames = 3,
          .stills_capture_circular_buffer_height = 0,
          .fast_preview_resume = 0,
@@ -537,34 +290,22 @@ static MMAL_STATUS_T create_camera_component(RASPISTILL_STATE *state)
       mmal_port_parameter_set(camera->control, &cam_config.hdr);
    }
 
-   raspicamcontrol_set_all_parameters(camera, &state->camera_parameters);
-
    // Now set up the port formats
 
-   format = preview_port->format;
+   format = video_port->format;
 
    format->encoding = MMAL_ENCODING_OPAQUE;
    format->encoding_variant = MMAL_ENCODING_I420;
 
-   format->es->video.width = state->preview_parameters.previewWindow.width;
-   format->es->video.height = state->preview_parameters.previewWindow.height;
+   format->es->video.width = state->width;
+   format->es->video.height = state->height;
    format->es->video.crop.x = 0;
    format->es->video.crop.y = 0;
-   format->es->video.crop.width = state->preview_parameters.previewWindow.width;
-   format->es->video.crop.height = state->preview_parameters.previewWindow.height;
+   format->es->video.crop.width = state->width;
+   format->es->video.crop.height = state->height;
    format->es->video.frame_rate.num = PREVIEW_FRAME_RATE_NUM;
    format->es->video.frame_rate.den = PREVIEW_FRAME_RATE_DEN;
 
-   status = mmal_port_format_commit(preview_port);
-
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("camera viewfinder format couldn't be set");
-      goto error;
-   }
-
-   // Set the same format on the video  port (which we dont use here)
-   mmal_format_full_copy(video_port->format, format);
    status = mmal_port_format_commit(video_port);
 
    if (status  != MMAL_SUCCESS)
@@ -835,7 +576,7 @@ int main(int argc, const char **argv)
    MMAL_PORT_T *preview_input_port = NULL;
    MMAL_PORT_T *encoder_input_port = NULL;
    MMAL_PORT_T *encoder_output_port = NULL;
-
+   default_status(&state);
    bcm_host_init();
 
    // Register our application with the logging system
@@ -844,30 +585,6 @@ int main(int argc, const char **argv)
    signal(SIGINT, sigint_handler);
    signal(SIGKILL, sigint_handler);
    signal(SIGUSR1, sigusr1_handler);
-
-   default_status(&state);
-
-   // Do we have any parameters
-   if (argc == 1)
-   {
-      fprintf(stderr, "\%s Camera App %s\n\n", basename(argv[0]), VERSION_STRING);
-
-      display_valid_parameters(basename(argv[0]));
-      exit(0);
-   }
-
-   // Parse the command line and put options in to our status structure
-   if (parse_cmdline(argc, argv, &state))
-   {
-      exit(0);
-   }
-
-   if (state.verbose)
-   {
-      fprintf(stderr, "\n%s Camera App %s\n\n", basename(argv[0]), VERSION_STRING);
-
-      dump_status(&state);
-   }
 
    // OK, we have a nice set of parameters. Now set up our components
    // We have three components. Camera, Preview and encoder.
@@ -878,15 +595,9 @@ int main(int argc, const char **argv)
    {
       vcos_log_error("%s: Failed to create camera component", __func__);
    }
-   else if ((status = raspipreview_create(&state.preview_parameters)) != MMAL_SUCCESS)
-   {
-      vcos_log_error("%s: Failed to create preview component", __func__);
-      destroy_camera_component(&state);
-   }
    else if ((status = create_encoder_component(&state)) != MMAL_SUCCESS)
    {
       vcos_log_error("%s: Failed to create encode component", __func__);
-      raspipreview_destroy(&state.preview_parameters);
       destroy_camera_component(&state);
    }
    else
@@ -899,7 +610,7 @@ int main(int argc, const char **argv)
       camera_preview_port = state.camera_component->output[MMAL_CAMERA_PREVIEW_PORT];
       camera_video_port   = state.camera_component->output[MMAL_CAMERA_VIDEO_PORT];
       camera_still_port   = state.camera_component->output[MMAL_CAMERA_CAPTURE_PORT];
-      preview_input_port  = state.preview_parameters.preview_component->input[0];
+      // preview_input_port  = state.preview_parameters.preview_component->input[0];
       encoder_input_port  = state.encoder_component->input[0];
       encoder_output_port = state.encoder_component->output[0];
 
@@ -1049,14 +760,10 @@ int main(int argc, const char **argv)
       }
       else
       {
-         mmal_status_to_int(status);
          vcos_log_error("%s: Failed to connect camera to preview", __func__);
       }
 
 error:
-
-      mmal_status_to_int(status);
-
       if (state.verbose)
          fprintf(stderr, "Closing down\n");
 
@@ -1070,22 +777,15 @@ error:
       if (state.encoder_component)
          mmal_component_disable(state.encoder_component);
 
-      if (state.preview_parameters.preview_component)
-         mmal_component_disable(state.preview_parameters.preview_component);
-
       if (state.camera_component)
          mmal_component_disable(state.camera_component);
 
       destroy_encoder_component(&state);
-      raspipreview_destroy(&state.preview_parameters);
       destroy_camera_component(&state);
 
       if (state.verbose)
          fprintf(stderr, "Close down completed, all components disconnected, disabled and destroyed\n\n");
    }
-
-   if (status != MMAL_SUCCESS)
-      raspicamcontrol_check_configuration(128);
 
    return 0;
 }
