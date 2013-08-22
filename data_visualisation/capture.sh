@@ -1,0 +1,1 @@
+raspistill -t 0 -o /home/pi/Desktop/latest.jpg -n &

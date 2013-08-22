@@ -1,0 +1,58 @@
+<html>
+	<head>
+		<title></title>
+		<script src="/socket.io/socket.io.js" type="text/javascript"></script>
+
+		<link rel="stylesheet" href="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.css" />
+		<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+		<script src="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="style.css" />
+	</head>
+	<body>
+		<button onclick="foo('snapshot')">Take new snapshot</button>
+		<button onclick="foo('stats')">Stats</button>
+		<button onclick="update_last()">Update image</button>
+		<button onclick="foo('shutdown')">Shut down pi</button>
+		<div id="stats"></div>
+		<div id="spinner" style="display:none"><img src="spinner.gif"></div>
+		<div id="result"></div><canvas id="myCanvas" width="540" height="360"></canvas> 
+		<script type="text/javascript">
+		var canvas = document.getElementById('myCanvas');
+var context = canvas.getContext('2d');
+
+var socket = io.connect('http://192.168.137.179:8887');
+
+function clear_load(){
+	document.getElementById('spinner').style.display='none';
+}
+
+function start_load(){
+	document.getElementById('spinner').style.display='block';
+}
+
+var foo = function(action) {
+	// start_load();
+	socket.emit('clicked foo', {
+		action: action
+	});
+	socket.on('received foo', function(data) {
+		if (data.target) document.getElementById(data.target).innerHTML = data.data;
+		document.getElementById('result').innerHTML = data.result;
+		if (data.show_image) update_last();
+	});
+	// socket.on('finished loading', clear_load());
+}
+
+function update_last(){
+
+	var imageObj = new Image();
+
+	      imageObj.onload = function() {
+	        context.drawImage(imageObj, 10, 10);
+	      };
+	      imageObj.src = 'latest.jpg';
+}
+
+		</script>
+	</body>
+</html>
