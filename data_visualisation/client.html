@@ -16,42 +16,7 @@
 		<div id="stats"></div>
 		<div id="spinner" style="display:none"><img src="spinner.gif"></div>
 		<div id="result"></div><canvas id="myCanvas" width="540" height="360"></canvas> 
-		<script type="text/javascript">
-		var canvas = document.getElementById('myCanvas');
-var context = canvas.getContext('2d');
-
-var socket = io.connect('http://192.168.137.179:8887');
-
-function clear_load(){
-	document.getElementById('spinner').style.display='none';
-}
-
-function start_load(){
-	document.getElementById('spinner').style.display='block';
-}
-
-var foo = function(action) {
-	// start_load();
-	socket.emit('clicked foo', {
-		action: action
-	});
-	socket.on('received foo', function(data) {
-		if (data.target) document.getElementById(data.target).innerHTML = data.data;
-		document.getElementById('result').innerHTML = data.result;
-		if (data.show_image) update_last();
-	});
-	// socket.on('finished loading', clear_load());
-}
-
-function update_last(){
-
-	var imageObj = new Image();
-
-	      imageObj.onload = function() {
-	        context.drawImage(imageObj, 10, 10);
-	      };
-	      imageObj.src = 'latest.jpg';
-}
+		<script type="text/javascript" src="client.js"></script>
 
 		</script>
 	</body>

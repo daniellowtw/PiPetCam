@@ -1,0 +1,30 @@
+<html>
+		<head>
+			<title></title>
+			<script src="/socket.io/socket.io.js" type="text/javascript"></script>
+		</head>
+		<body>
+			<button onclick="capture()">Take a picture</button>
+			<button onclick="update_picture()">Load last picture taken</button>
+</br>
+			<canvas id="myCanvas" width="540" height="360"></canvas> 
+
+			<script type="text/javascript">
+				var socket = io.connect('http://192.168.137.104:8887');
+				var canvas = document.getElementById('myCanvas');
+				var context = canvas.getContext('2d');
+				var imageObj = new Image();
+
+				function capture(){
+					socket.emit('snapshot');
+				}
+				function update_picture(){
+					imageObj.src = 'latest.jpg';
+					imageObj.onload = display;
+				}
+				function display(){
+					context.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+				}
+			</script>
+		</body>
+	</html>

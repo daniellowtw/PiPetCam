@@ -9,6 +9,8 @@ To set up an access point, the following tutorial is a good resource if one use 
 
 http://www.daveconroy.com/turn-your-raspberry-pi-into-a-wifi-hotspot-with-edimax-nano-usb-ew-7811un-rtl8188cus-chipset/
 
+http://www.cyberciti.biz/faq/howto-ubuntu-debian-squeeze-dhcp-server-setup-tutorial/
+
 ```
 sudo apt-get install bridge-utils hostapd
 ```
