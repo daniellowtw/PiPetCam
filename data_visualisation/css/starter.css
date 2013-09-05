@@ -2,6 +2,33 @@ body {
   padding-top: 50px;
 }
 .starter-template {
-  padding: 40px 15px;
+  /*padding: 40px 15px;*/
   text-align: center;
+}
+
+.btn_camera_control {
+	padding: 10px;
+}
+
+#myCanvas{
+	display: inline-block;
+	height: auto;
+	max-width: 100%;
+	padding: 4px;
+	line-height: 1.428571429;
+	background-color: #f7f7f7;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	-webkit-transition: all .2s ease-in-out;
+	transition: all .2s ease-in-out;
+}
+
+#heatmapArea {
+	display: inline-block;
+	position:relative;
+	width:640px;
+	height:480px;
+	/*background-size: cover;*/
+	/*background-image:url(../background.jpg);*/
+	border:1px dashed black;
 }

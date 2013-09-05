@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="">
+        <meta name="author" content="">
+        <link rel="shortcut icon" href="assets/ico/favicon.png">
+        <title>
+            PiPetCam Web Interface
+        </title>
+        <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css">
+        <link href="css/starter.css" rel="stylesheet" type="text/css">
+        <script src="/socket.io/socket.io.js" type="text/javascript">
+</script>
+        <script type="text/javascript" src="/strobe/lib/swfobject.js">
+</script>
+        <script type="text/javascript">
+
+          
+        // Create a StrobeMediaPlayback configuration 
+        var parameters = {  
+                     src: "rtmp://" + window.location.hostname + "/flvplayback/myStream",  
+                              autoPlay: true,  
+                     controlBarAutoHide: false,  
+                     playButtonOverlay: true,  
+                     showVideoInfoOverlayOnStartUp: false,  
+                              optimizeBuffering : false,  
+                              initialBufferTime : 0.1,  
+                              expandedBufferTime : 0.1,  
+                              minContinuousPlayback : 0.1,  
+                     poster: "strobe/images/poster.png"  
+                   };  
+          
+        // Embed the player SWF:          
+        swfobject.embedSWF
+         ( "/strobe/StrobeMediaPlayback.swf"
+         , "strobeMediaPlayback"
+         , 640
+         , 480
+         , "10.1.0"
+         , {}
+         , parameters
+         , { allowFullScreen: "true"}
+         , { name: "strobeMediaPlayback" }
+         );
+
+        </script>
+    </head>
+    <body>
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">PiPetCam</a>
+                </div>
+                <div class="collapse navbar-collapse">
+                    <ul class="nav navbar-nav">
+                        <li class="active">
+                            <a href="/">Controls</a>
+                        </li>
+                        <li>
+                            <a href="/snapshot">Snap shot</a>
+                        </li>
+                        <li>
+                            <a href="/heatmap">Heat Map</a>
+                        </li>
+                        <li>
+                            <a href="/streaming">Streaming</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="starter-template">
+                <h1>
+                    PiPetCam Web Interface
+                </h1>
+                <div id="strobeMediaPlayback">
+                    <p>
+                        Alternative content
+                    </p>
+                </div>
+            </div>
+        </div><script src="js/jquery-1.10.2.min.js" type="text/javascript">
+</script><script src="js/bootstrap.min.js" type="text/javascript">
+</script><script type="text/javascript" src="lib.js">
+</script>
+    </body>
+</html>

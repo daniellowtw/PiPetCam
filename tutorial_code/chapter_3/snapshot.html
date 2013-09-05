@@ -7,12 +7,16 @@
     <meta name="author" content="">
     <link rel="shortcut icon" href="assets/ico/favicon.png">
 
-    <title>PiPetCam Web Interface</title>
+    <title>Starter Template for Bootstrap</title>
+
+    <!-- Bootstrap core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom styles for this template -->
     <link href="css/starter.css" rel="stylesheet">
     <link href="css/starter-template.css" rel="stylesheet">
-    <script src="js/jquery.js"></script>
-		<script src="/socket.io/socket.io.js" type="text/javascript"></script>
+	
+	<script src="/socket.io/socket.io.js" type="text/javascript"></script>
+
   </head>
 
   <body>
@@ -33,7 +37,7 @@
             <li><a href="#about">About</a></li>
             <li><a href="#contact">Contact</a></li>
           </ul>
-        </div>
+        </div><!--/.nav-collapse -->
       </div>
     </div>
 
@@ -41,17 +45,37 @@
 
       <div class="starter-template">
         <h1>Snapshot tool</h1>
-        <button onclick="capture()" class="btn btn-lg btn-default">Take a picture</button>
+        <a href="#" onclick="snapshot()" class="btn btn-primary"><i class="icon-camera"></i> Take a snapshot</a>
 			<button onclick="update_picture()" class="btn btn-lg btn-default">Load last picture taken</button>
 		</br>
 			<canvas id="myCanvas" width="540" height="360"></canvas> 
+        
+        <!-- <p class="lead">Use this document as a way to quickly start any new project.<br> All you get is this text and a mostly barebones HTML document.</p> -->
       </div>
 
-    </div>
+    </div><!-- /.container -->
 
+<script type="text/javascript">
+				var socket = io.connect('http://192.168.137.104:8887');
+				var canvas = document.getElementById('myCanvas');
+				var context = canvas.getContext('2d');
+				var imageObj = new Image();
+
+				function capture(){
+					socket.emit('snapshot');
+				}
+				function update_picture(){
+					imageObj.src = 'latest.jpg';
+					imageObj.onload = display;
+				}
+				function display(){
+					context.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+				}
+			</script>
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
     <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="client.js"></script>
-
   </body>
 </html>

@@ -1,3 +1,4 @@
+
 // Declaring our variables
 var express = require('express'),
 	sys = require('sys'),
@@ -9,7 +10,7 @@ var express = require('express'),
 	spawn = require('child_process').spawn
 
 var heatmap_store = {
-	max: 20,
+	max: 100,
 	data: []
 };
 
@@ -24,6 +25,8 @@ app.use(express.static(path.join(__dirname, '/'))); // we need this so that we c
 app.get('/', function(req, res) {
 	res.sendfile(__dirname + '/main.html');
 });
+
+io.set('log level', 1);
 
 server.listen(app.get('port'), function() {
 	console.log('Express server listening on port ' + app.get('port'));
@@ -82,7 +85,10 @@ io.sockets.on('connection', function(socket) {
 	socket.on('heatmap_data', function(data) {
 		console.log("sending heatmap data");
 		socket.emit('data', heatmap_store);
-	})
+	});
+	socket.on('load_heatmap_data', function(file_name){
+		load_data(file_name);
+	});
 });
 
 
@@ -105,4 +111,30 @@ function write_socket(command) {
 	client.on('end', function() {
 		console.log('client disconnected');
 	});
+}
+
+
+// This is for reading the dta file
+var reader = require ("buffered-reader");
+var BinaryReader = reader.BinaryReader;
+var DataReader = reader.DataReader;
+
+function load_data(file_name){
+	new DataReader (file_name, { encoding: "utf8" })
+	    .on ("error", function (error){
+	    	// Probably due to the missing file.
+	        console.log ("error: " + error);
+	    })
+	    .on ("line", function (line){
+	    	data = line.split(" ");
+	    	if (data[0] == 0 && data[1] == 0) return;
+	    	data_point = {};
+	    	data_point.x = data[0];
+	    	data_point.y = data[1];
+	    	heatmap_store.data.push(data_point);
+	    })
+	    .on ("end", function (){
+	        console.log ("EOF");
+	    })
+	    .read ();
 }
