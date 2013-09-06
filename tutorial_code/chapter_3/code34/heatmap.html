@@ -1,0 +1,33 @@
+<html>
+    <head>
+        <title>Heat Map</title>
+        <script src="/socket.io/socket.io.js" type="text/javascript"></script>
+    </head>
+    <body>
+        <div id="heatmapArea"></div>
+        <script type="text/javascript">
+            var socket = io.connect('http://192.168.137.211:8887');
+
+            var xx = h337.create({
+                "element": document.getElementById("heatmapArea"),
+                "radius": 55,
+                "visible": true
+            });
+
+            // Setting up the background
+            xx.get("element").style["background"] = "url(../latest.jpg)";
+            xx.get("element").style["backgroundSize"] = 'cover';
+
+            // We create a function to get the coordinates from the server
+            function get_latest() {
+                socket.emit('heatmap_data');
+                socket.on('data', function(data) {
+                    xx.store.setDataSet(data);
+                })
+            }
+
+            // We update our map every 10 seconds.
+            window.setInterval("get_latest()",10000); 
+        </script>
+    </body>
+</html>

@@ -1,0 +1,6 @@
+The idea of this section is to create a listening server in c and have the nodejs act like a client. This way, we can control the c program using nodejs to create a socket with the program and sending commands to it.
+
+# Problems
+
+1. It seems like in order for the server to act on the command, it has to kill itself, which then terminates the main program.
+2. I tried to create a child process that process the command, but the child process is unable to call the function of the parent process. Some form of IPC is required.
