@@ -1,1 +1,1 @@
-raspistill -t 0 -o latest.jpg -n -vf &
+nohup raspistill -t 0 -o latest.jpg -n &

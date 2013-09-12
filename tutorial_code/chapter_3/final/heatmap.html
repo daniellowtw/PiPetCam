@@ -25,10 +25,10 @@
                         <li>
                             <a href="/">Controls</a>
                         </li>
-                        <li class="active">
+                        <li>
                             <a href="/snapshot">Snap shot</a>
                         </li>
-                        <li>
+                        <li class="active">
                             <a href="/heatmap">Heat Map</a>
                         </li>
                         <li>
@@ -38,30 +38,21 @@
                 </div>
             </div>
         </div>
-    <div class="container">
-      <div class="starter-template">
-        <h1>Snapshot tool</h1>
-        <div class="btn_camera_control">
-        <button onclick="capture()" class="btn btn-lg btn-default">Take a picture</button>
-			<button onclick="update_picture()" class="btn btn-lg btn-default">Load last picture taken</button>
-    </div>
-		</br>
-			<p>
-        <canvas id="myCanvas" width="540" height="360"></canvas> 
-    </p>
-      <label>Mouse position:</label><input id ="position_output" type="text" placeholder="Text input">
-      </div>
-
-    </div>
+        <div class="container">
+			<div class="starter-template">
+				<h1>
+					Heatmap of pet movement
+				</h1>
+				<div id="heatmapArea"></div>
+			</div>
+		</div>
         <script src="js/jquery-1.10.2.min.js" type="text/javascript"></script>
-    <script src="js/bootstrap.min.js"></script>
-    <script src="lib.js"></script>
-    <script type="text/javascript">
-    canvas = document.getElementById('myCanvas');
-    context = canvas.getContext('2d');
-    imageObj = new Image();
-    snapshot_setup(document.getElementById('myCanvas'), document.getElementById('position_output'));
-    </script>
-
-  </body>
+        <script src="js/bootstrap.min.js" type="text/javascript"></script>
+        <script type="text/javascript" src="lib.js"></script>
+        <script src="js/heatmap.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		window.onload = heatmap_setup();
+		window.setInterval("get_latest()",5000);
+	</script>
+	</body>
 </html>

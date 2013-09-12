@@ -71,3 +71,9 @@ A region of interest (ROI) can be designated so that movements in the ROI can be
 # Optional tweaks
 
 1. Disable the red light by adding `disable_camera_led=1` to /boot/config.txt by typing `sudo nano /boot/config.txt` and rebooting the pi.
+
+# TODO
+
+* Create socket so that program can be controlled via nodejs
+* Explore daemon mode to invoke capture via signals instead of a script file.
+* Complete the camera version (ie without using any drivers)

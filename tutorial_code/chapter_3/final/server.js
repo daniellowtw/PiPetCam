@@ -8,6 +8,12 @@ var express = require('express'),
 	io = require('socket.io').listen(server),
 	spawn = require('child_process').spawn
 
+var heatmap_store = {
+	max: 20,
+	data: []
+};
+
+
 // Setting up our server environment
 app.set('port', process.env.TEST_PORT || 8887);
 app.use(express.favicon());
@@ -23,8 +29,22 @@ server.listen(app.get('port'), function() {
 	console.log('Express server listening on port ' + app.get('port'));
 });
 
-app.get('/snapshot', function (req, res) {
-  res.sendfile('snapshot.html');
+app.get('/snapshot', function(req, res) {
+	res.sendfile('snapshot.html');
+});
+app.get('/heatmap', function(req, res) {
+	res.sendfile('heatmap.html');
+});
+app.get('/streaming', function(req, res) {
+	res.sendfile('streaming.html');
+});
+app.get('/addpoint', function(req, res) {
+	if (req.query.x == null || req.query.y == null) return;
+	heatmap_store.data.push({
+		x: req.query.x,
+		y: req.query.y
+	});
+	res.sendfile('heatmap.html');
 });
 
 // This is the callback required for our exec function below
@@ -41,6 +61,46 @@ var puts = function(error, stdout, stderr) {
 io.sockets.on('connection', function(socket) {
 	socket.on('snapshot', function(data) {
 		console.log("Taking a picture");
-		child = exec("capture.sh", puts);
+		child = exec("sh capture.sh", puts);
 	});
+	socket.on('send_command', function(data) {
+		console.log("sending the command:" + data);
+		// write_socket(data);
+	});
+	socket.on('send_coord', function(data) {
+		console.log("Sending user selection");
+		// write_socket(data);
+	});
+	socket.on('add_data_point', function(data){
+		heatmap_store.data.push({
+			x: data.x,
+			y: data.y
+		});
+	});
+	socket.on('heatmap_data', function(data) {
+		console.log("sending heatmap data");
+		socket.emit('data', heatmap_store);
+	})
 });
+
+
+// This is for socket stuff, to talk to our c program
+// We are the client
+var net = require('net');
+
+function write_socket(command) {
+	var client = net.connect({
+			port: 5001
+		},
+		function() { //'connect' listener
+			console.log('client connected and data sent');
+			client.write('command\r');
+		});
+	client.on('data', function(data) {
+		console.log(data.toString());
+		client.end();
+	});
+	client.on('end', function() {
+		console.log('client disconnected');
+	});
+}

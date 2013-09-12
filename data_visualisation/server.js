@@ -33,8 +33,6 @@ app.get('/snapshot', function(req, res) {
 	res.sendfile('snapshot.html');
 });
 app.get('/heatmap', function(req, res) {
-		child = exec("pwd", puts);
-
 	res.sendfile('heatmap.html');
 });
 app.get('/streaming', function(req, res) {
